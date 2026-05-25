@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Scrollbar (uses CSS vars for theme-awareness) ── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #6366f1;
+  }
+
+  /* ── Light mode tokens (default / .light) ── */
+  :root,
+  .light {
+    --color-bg-base:      #f8fafc;  /* slate-50  */
+    --color-bg-surface:   #f1f5f9;  /* slate-100 */
+    --color-bg-elevated:  #ffffff;
+    --color-border:       #e2e8f0;  /* slate-200 */
+    --color-border-muted: #cbd5e1;  /* slate-300 */
+    --color-text-primary: #0f172a;  /* slate-900 */
+    --color-text-muted:   #64748b;  /* slate-500 */
+    --color-text-subtle:  #94a3b8;  /* slate-400 */
+    --scrollbar-track:    #e2e8f0;
+    --scrollbar-thumb:    #94a3b8;
+  }
+
+  /* ── Dark mode tokens ── */
+  .dark {
+    --color-bg-base:      #0f0f13;  /* dark-900 */
+    --color-bg-surface:   #18181f;  /* dark-800 */
+    --color-bg-elevated:  #222230;  /* dark-700 */
+    --color-border:       #2d2d3f;  /* dark-600 */
+    --color-border-muted: #3a3a52;  /* dark-500 */
+    --color-text-primary: #ffffff;
+    --color-text-muted:   #94a3b8;  /* slate-400 */
+    --color-text-subtle:  #64748b;  /* slate-500 */
+    --scrollbar-track:    #18181f;
+    --scrollbar-thumb:    #3a3a52;
+  }
+}
+
+@layer components {
+  /* glass-card: light = white/80 frosted, dark = dark-800/60 frosted */
+  .glass-card {
+    @apply bg-white/80 dark:bg-dark-800/60 backdrop-blur-xl
+           border border-slate-200 dark:border-dark-600/50 rounded-2xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500
+           text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200
+           shadow-glow-primary hover:shadow-glow-accent active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply text-slate-600 dark:text-slate-400
+           hover:text-slate-900 dark:hover:text-white
+           hover:bg-slate-100 dark:hover:bg-dark-700/60
+           font-medium py-2 px-4 rounded-xl transition-all duration-200 active:scale-95;
+  }
+
+  .input-field {
+    @apply w-full bg-slate-100 dark:bg-dark-700/60
+           border border-slate-300 dark:border-dark-500/60
+           hover:border-primary-500/50 focus:border-primary-500
+           focus:ring-2 focus:ring-primary-500/20
+           text-slate-900 dark:text-white
+           placeholder-slate-400 dark:placeholder-slate-500
+           rounded-xl px-4 py-3 transition-all duration-200 outline-none text-sm;
+  }
+
+  .stat-card {
+    @apply glass-card p-5 flex flex-col gap-2 hover:border-primary-500/30 transition-all duration-300
+           hover:shadow-card-hover cursor-default;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+           transition-all duration-200 cursor-pointer;
+  }
+
+  .nav-item-active {
+    @apply bg-primary-600/20 text-primary-400 border border-primary-500/30;
+  }
+
+  .nav-item-inactive {
+    @apply text-slate-600 dark:text-slate-400
+           hover:text-slate-900 dark:hover:text-white
+           hover:bg-slate-100 dark:hover:bg-dark-700/60;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
