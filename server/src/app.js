@@ -31,6 +31,7 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:3000',
 ];
+console.log('Allowed CORS origins:', allowedOrigins);
 
 app.use(
   cors({
