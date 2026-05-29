@@ -46,12 +46,8 @@ const CustomDot = (props) => {
 };
 
 export default function ProductivityChart({ data = [], period = 'week' }) {
-  const avgScore =
-    data.length > 0
-      ? Math.round(data.reduce((s, d) => s + (d.score || d.productivity_score || 0), 0) / data.length)
-      : 0;
-
-  const formatted = data.map(d => ({
+  const avgScore = data?.averageScore ?? 0;
+  const formatted = data?.scores?.map(d => ({
     ...d,
     score: d.score ?? d.productivity_score ?? 0,
     label:

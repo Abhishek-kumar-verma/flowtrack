@@ -18,12 +18,13 @@ import api from '../utils/api';
 import Layout from '../components/common/Layout';
 import HabitHeatmap from '../components/common/HabitHeatmap';
 
-const FREQUENCIES = ['Daily', 'Weekly'];
+const FREQUENCIES = [{ label:'Daily' , value: 'DAILY' }, { label:'Weekly', value: 'WEEKLY' }];
+
 
 const defaultForm = {
   name: '',
   description: '',
-  frequency: 'Daily',
+  frequency: 'DAILY',
   target_count: 1,
 };
 
@@ -31,8 +32,8 @@ function HabitModal({ habit, onClose, onSaved }) {
   const [form, setForm] = useState(habit ? {
     name: habit.name || '',
     description: habit.description || '',
-    frequency: habit.frequency || 'Daily',
-    target_count: habit.target_count || 1,
+  frequency: habit.frequency || 'DAILY',
+  target_count: habit.target_count || 1,
   } : { ...defaultForm });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -118,7 +119,7 @@ function HabitModal({ habit, onClose, onSaved }) {
                     onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}
                     className="w-full bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 rounded-xl px-4 py-2.5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors appearance-none"
                   >
-                    {FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+                    {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 pointer-events-none" />
                 </div>
@@ -274,7 +275,7 @@ export default function Habits() {
     setError('');
     try {
       const res = await api.get('/habits');
-      setHabits(res.data?.habits || res.data || []);
+      setHabits(res.data?.data  || []);
     } catch (e) {
       setError('Failed to load habits');
     } finally {
@@ -320,7 +321,9 @@ export default function Habits() {
     }
   };
 
-  const completedToday = habits.filter(h => h.completed_today || h.logged_today).length;
+  
+
+  const completedToday = habits?.filter(h => h.completed_today || h.logged_today).length;
   const completionRate = habits.length > 0 ? Math.round((completedToday / habits.length) * 100) : 0;
 
   return (

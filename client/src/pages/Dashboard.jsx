@@ -174,7 +174,7 @@ export default function Dashboard() {
 
     // Quote
     if (quoteRes.status === 'fulfilled') {
-      setQuote(quoteRes.value.data)
+      setQuote(quoteRes.value.data.data)
     } else {
       setQuote({ text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' })
     }
@@ -335,7 +335,7 @@ export default function Dashboard() {
               ) : (
                 <div>
                   <p className="text-slate-700 dark:text-slate-200 text-sm italic leading-relaxed">
-                    "{quote?.text || quote?.quote}"
+                    "{quote?.content  || 'Stay positive, work hard, make it happen.'}"
                   </p>
                   {quote?.author && (
                     <p className="text-slate-500 text-xs mt-1.5">— {quote.author}</p>

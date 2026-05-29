@@ -84,7 +84,7 @@ async function fetchDailyData(userId, date) {
 async function generateDailySummaryHandler(req, res) {
   try {
     const userId = req.user.id;
-    const date = toDateOnly();
+    const date = toDateOnly(req.query.date || new Date());
 
     const data = await fetchDailyData(userId, date);
     const { user, completedTasks, pendingTasks, gymLog, learningLogs, habitLogs, moodLog, pomodoroSessions } =

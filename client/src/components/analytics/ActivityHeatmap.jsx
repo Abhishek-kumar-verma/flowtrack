@@ -20,13 +20,13 @@ function getColorIntensity(count) {
   return 4;
 }
 
-export default function ActivityHeatmap({ data = [], year }) {
+export default function ActivityHeatmap({ data = {}, year }) {
   const [tooltip, setTooltip] = useState(null);
   const currentYear = year || new Date().getFullYear();
 
   const { weeks, monthLabels } = useMemo(() => {
     const dataMap = {};
-    data.forEach(d => {
+    data?.heatmap?.forEach(d => {
       dataMap[d.date] = d.count;
     });
 

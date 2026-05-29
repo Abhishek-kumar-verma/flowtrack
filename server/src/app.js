@@ -68,17 +68,17 @@ app.get('/health', (_req, res) => {
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 
-app.use('/api/auth',      authRoutes);
-app.use('/api/users',     userRoutes);
-app.use('/api/tasks',     taskRoutes);
-app.use('/api/gym',       gymRoutes);
-app.use('/api/learning',  learningRoutes);
-app.use('/api/habits',    habitRoutes);
+app.use('/api/auth',  authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/gym', gymRoutes);
+app.use('/api/learning',learningRoutes);
+app.use('/api/habits', habitRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/ai',        aiRoutes);
-app.use('/api/quotes',    quoteRoutes);
-app.use('/api/mood',      moodRoutes);
-app.use('/api/pomodoro',  pomodoroRoutes);
+app.use('/api/ai',aiRoutes);
+app.use('/api/quotes', quoteRoutes);
+app.use('/api/mood', moodRoutes);
+app.use('/api/pomodoro',pomodoroRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 

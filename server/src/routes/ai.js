@@ -11,7 +11,7 @@ router.use(protect);
  * POST /api/ai/daily-summary
  * Generate (or regenerate) today's AI daily report for the authenticated user.
  */
-router.post('/daily-summary', aiController.generateDailySummaryHandler);
+router.get('/daily-summary', aiController.generateDailySummaryHandler);
 
 /**
  * GET /api/ai/report?date=YYYY-MM-DD

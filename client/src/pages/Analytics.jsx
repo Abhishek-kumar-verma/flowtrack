@@ -142,7 +142,7 @@ export default function Analytics() {
 
   const fetchOverview = async () => {
     try {
-      const res = await api.get('/analytics/');
+      const res = await api.get('/analytics');
       setOverview(res.data);
     } catch (e) {
       setError(prev => ({ ...prev, overview: 'Failed to load overview' }));
