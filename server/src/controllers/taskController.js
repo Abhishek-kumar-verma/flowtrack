@@ -124,7 +124,7 @@ const getTask = async (req, res) => {
 const createTask = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { title, description, category, priority, deadline } = req.body;
+    const { title, description, category, priority, status, timeSpent, deadline } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim() === '') {
       return res.status(400).json({ success: false, message: 'Title is required' });
@@ -148,13 +148,25 @@ const createTask = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid deadline date' });
     }
 
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success : false,
+        message : `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
+      });
+    }
+
+    if (timeSpent !== undefined && (isNaN(Number(timeSpent)) || Number(timeSpent) < 0)) {
+      return res.status(400).json({ success: false, message: 'timeSpent must be a non-negative number' });
+    }
+
     const task = await createTaskInDB({
       userId,
       title      : title.trim(),
       description: description?.trim() ?? null,
       category   : category ?? 'PERSONAL',
       priority   : priority ?? 'MEDIUM',
-      status     : 'TODO',
+      status     : status ?? 'TODO',
+      timeSpent  : timeSpent != null ? Number(timeSpent) : 0,
       deadline   : deadline ? new Date(deadline) : null,
     });
 
@@ -223,21 +235,21 @@ const deleteTask = async (req, res) => {
   try {
     const id         = parseInt(req.params.id, 10);
     const userId     = req.user.id;
-    const hardDelete = req.query.hard === 'true';
+    const softDelete = req.query.soft === 'true';
 
     const existing = await findTaskById(id, userId);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
-    if (hardDelete) {
-      await deleteTaskInDB(id);
-      return res.json({ success: true, message: 'Task permanently deleted' });
+    if (softDelete) {
+      const task = await updateTaskInDB(id, { status: 'CANCELLED' });
+      return res.json({ success: true, data: task, message: 'Task marked as cancelled' });
     }
 
-    const task = await updateTaskInDB(id, { status: 'CANCELLED' });
+    await deleteTaskInDB(id);
 
-    return res.json({ success: true, data: task, message: 'Task marked as cancelled' });
+    return res.json({ success: true, message: 'Task permanently deleted' });
   } catch (err) {
     console.error('deleteTask error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
@@ -279,10 +291,11 @@ const logTime = async (req, res) => {
   try {
     const id     = parseInt(req.params.id, 10);
     const userId = req.user.id;
-    const { minutes } = req.body;
+    const { minutes, timeSpent: timeSpentField } = req.body;
+    const value = minutes ?? timeSpentField;
 
-    if (minutes === undefined || isNaN(Number(minutes)) || Number(minutes) <= 0) {
-      return res.status(400).json({ success: false, message: 'A positive "minutes" value is required' });
+    if (value === undefined || isNaN(Number(value)) || Number(value) <= 0) {
+      return res.status(400).json({ success: false, message: 'A positive "minutes" or "timeSpent" value is required' });
     }
 
     const existing = await findTaskById(id, userId);
@@ -290,7 +303,7 @@ const logTime = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
-    await incrementTaskTime(id, Number(minutes));
+    await incrementTaskTime(id, Number(value));
 
     const task = await findTaskById(id, userId);
 

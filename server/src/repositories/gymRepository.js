@@ -44,7 +44,7 @@ export const findGymLogsByDateRange = (userId, start, end) =>
   GymLog.findAll({
     where: { userId, date: { [Op.between]: [start, end] } },
     order: [['date', 'ASC']],
-    attributes: ['date', 'duration', 'bodyPart'],
+    attributes: ['date', 'duration', 'bodyPart', 'caloriesBurned'],
   });
 
 export const findAllGymLogDates = (userId) =>
@@ -56,6 +56,9 @@ export const findAllGymLogDates = (userId) =>
 
 export const findAllGymBodyParts = (userId) =>
   GymLog.findAll({ where: { userId }, attributes: ['bodyPart'] });
+
+export const findGymLogByUserAndDate = (userId, dateStr) =>
+  GymLog.findOne({ where: { userId, date: dateStr } });
 
 export const findTodaysGymLog = (userId, start, end) =>
   GymLog.findOne({

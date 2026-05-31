@@ -9,6 +9,7 @@ import {
   findAllGymBodyParts,
   findAllGymLogDates,
   findTodaysGymLog,
+  findGymLogByUserAndDate,
 } from '../repositories/gymRepository.js';
 
 const todayRange = () => {
@@ -112,6 +113,15 @@ const createGymLog = async (req, res) => {
       return res.status(400).json({ success: false, message: 'exercises must be an array' });
     }
 
+    const dateStr = new Date(date).toISOString().split('T')[0];
+    const existingSession = await findGymLogByUserAndDate(userId, dateStr);
+    if (existingSession) {
+      return res.status(409).json({
+        success : false,
+        message : 'A gym session already exists for this date. Update the existing session instead.',
+      });
+    }
+
     const log = await createGymLogInDB(
       {
         userId,
@@ -204,6 +214,10 @@ const getGymStats = async (req, res) => {
 
     const totalWorkoutsThisMonth = thisMonthLogs.length;
     const totalDurationThisMonth = thisMonthLogs.reduce((sum, l) => sum + (l.duration || 0), 0);
+    const totalCaloriesThisMonth = thisMonthLogs.reduce((sum, l) => sum + (l.caloriesBurned || 0), 0);
+    const averageDurationThisMonth = totalWorkoutsThisMonth > 0
+      ? Math.round(totalDurationThisMonth / totalWorkoutsThisMonth)
+      : 0;
 
     const allBodyPartLogs = await findAllGymBodyParts(userId);
 
@@ -218,6 +232,7 @@ const getGymStats = async (req, res) => {
       .sort((a, b) => b.count - a.count);
 
     const allLogDates = await findAllGymLogDates(userId);
+    const totalWorkoutsAllTime = allLogDates.length;
 
     const uniqueDays = [
       ...new Set(
@@ -280,6 +295,9 @@ const getGymStats = async (req, res) => {
       data: {
         totalWorkoutsThisMonth,
         totalDurationThisMonth,
+        totalCaloriesThisMonth,
+        averageDurationThisMonth,
+        totalWorkoutsAllTime,
         currentStreak,
         mostTrainedBodyParts,
         workoutsPerWeek,

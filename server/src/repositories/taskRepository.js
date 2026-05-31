@@ -22,10 +22,7 @@ export const findTodaysTasks = (userId, start, end) =>
     where: {
       userId,
       status: { [Op.ne]: 'CANCELLED' },      // Bug 6: exclude cancelled tasks from dashboard
-      [Op.or]: [
-        { deadline: { [Op.between]: [start, end] } },
-        { createdAt: { [Op.between]: [start, end] } },
-      ],
+      deadline: { [Op.between]: [start, end] },
     },
     order: [['createdAt', 'DESC']],
   });

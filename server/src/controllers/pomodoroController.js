@@ -24,6 +24,10 @@ const startSession = async (req, res) => {
     const userId = req.user.id;
     const { taskId, duration = 25 } = req.body;
 
+    if (Number(duration) <= 0) {
+      return res.status(400).json({ success: false, message: 'duration must be greater than 0' });
+    }
+
     if (taskId) {
       const task = await db.Task.findOne({ where: { id: taskId, userId } });
       if (!task) {

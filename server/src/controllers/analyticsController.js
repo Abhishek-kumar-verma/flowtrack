@@ -9,7 +9,10 @@ function daysAgo(offsetDays) {
 }
 
 function formatDate(d) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function computeStreaks(dateSetsArray) {
@@ -103,22 +106,22 @@ async function getOverallStats(req, res) {
         attributes: ['status'],
         raw: true,
       }),
-      db.GymLog.count({ where: { userId, date: { [Op.gte]: weekStart.toISOString().split('T')[0] } } }),
+      db.GymLog.count({ where: { userId, date: { [Op.gte]: formatDate(weekStart) } } }),
       db.LearningLog.findOne({
-        where: { userId, date: { [Op.gte]: weekStart.toISOString().split('T')[0] } },
+        where: { userId, date: { [Op.gte]: formatDate(weekStart) } },
         attributes: [[fn('SUM', col('timeSpent')), 'total']],
         raw: true,
       }),
-      db.HabitLog.count({ where: { userId, date: { [Op.gte]: weekStart.toISOString().split('T')[0] } } }),
+      db.HabitLog.count({ where: { userId, date: { [Op.gte]: formatDate(weekStart) } } }),
       db.Habit.count({ where: { userId } }),
       db.Task.findAll({
         where: { userId, createdAt: { [Op.gte]: monthStart } },
         attributes: ['status'],
         raw: true,
       }),
-      db.GymLog.count({ where: { userId, date: { [Op.gte]: monthStart.toISOString().split('T')[0] } } }),
+      db.GymLog.count({ where: { userId, date: { [Op.gte]: formatDate(monthStart) } } }),
       db.LearningLog.findOne({
-        where: { userId, date: { [Op.gte]: monthStart.toISOString().split('T')[0] } },
+        where: { userId, date: { [Op.gte]: formatDate(monthStart) } },
         attributes: [[fn('SUM', col('timeSpent')), 'total']],
         raw: true,
       }),
@@ -150,7 +153,7 @@ async function getOverallStats(req, res) {
     const monthLearningHours = (Number(monthLearning?.total) || 0) / 60;
 
     const monthHabitLogCount = weekHabitTotal > 0
-      ? await db.HabitLog.count({ where: { userId, date: { [Op.gte]: monthStart.toISOString().split('T')[0] } } })
+      ? await db.HabitLog.count({ where: { userId, date: { [Op.gte]: formatDate(monthStart) } } })
       : 0;
     const monthHabitRate =
       weekHabitTotal > 0 ? monthHabitLogCount / (weekHabitTotal * 30) : 0;
@@ -259,22 +262,22 @@ async function getTaskAnalytics(req, res) {
     for (let i = 29; i >= 0; i--) {
       const d = daysAgo(i);
       const dayEnd = new Date(d);
-      dayEnd.setUTCHours(23, 59, 59, 999);
+      dayEnd.setHours(23, 59, 59, 999);
       last30Days.push({ date: formatDate(d), start: d, end: dayEnd });
     }
 
-    const recentTasks = tasks.filter((t) => new Date(t.createdAt) >= thirtyDaysAgo);
-
     const completionTrend = last30Days.map(({ date, start, end }) => {
-      const dayTasks = recentTasks.filter(
+      const dayCreated = tasks.filter(
         (t) => new Date(t.createdAt) >= start && new Date(t.createdAt) <= end,
       );
-      const dayCompleted = dayTasks.filter((t) => t.status === 'COMPLETED').length;
+      const dayCompleted = tasks.filter(
+        (t) => t.status === 'COMPLETED' && new Date(t.updatedAt) >= start && new Date(t.updatedAt) <= end,
+      ).length;
       const rate =
-        dayTasks.length > 0
-          ? Math.round((dayCompleted / dayTasks.length) * 100)
+        dayCreated.length > 0
+          ? Math.round((dayCompleted / dayCreated.length) * 100)
           : null;
-      return { date, total: dayTasks.length, completed: dayCompleted, rate };
+      return { date, total: dayCreated.length, completed: dayCompleted, rate };
     });
 
     const completedWithTime = tasks.filter(
@@ -313,14 +316,20 @@ async function getProductivityTrend(req, res) {
     const period = req.query.period || 'week';
 
     const periodDays = { week: 7, month: 30, year: 365 };
-    const days = periodDays[period] ?? 7;
+    if (!(period in periodDays)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid period. Must be one of: ${Object.keys(periodDays).join(', ')}`,
+      });
+    }
+    const days = periodDays[period];
     const startDate = daysAgo(days - 1);
 
     const buckets = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = daysAgo(i);
       const dayEnd = new Date(d);
-      dayEnd.setUTCHours(23, 59, 59, 999);
+      dayEnd.setHours(23, 59, 59, 999);
       buckets.push({ dateStr: formatDate(d), start: d, end: dayEnd });
     }
 
@@ -331,17 +340,17 @@ async function getProductivityTrend(req, res) {
         raw: true,
       }),
       db.GymLog.findAll({
-        where: { userId, date: { [Op.gte]: startDate.toISOString().split('T')[0] } },
+        where: { userId, date: { [Op.gte]: formatDate(startDate) } },
         attributes: ['date'],
         raw: true,
       }),
       db.LearningLog.findAll({
-        where: { userId, date: { [Op.gte]: startDate.toISOString().split('T')[0] } },
+        where: { userId, date: { [Op.gte]: formatDate(startDate) } },
         attributes: ['date', 'timeSpent'],
         raw: true,
       }),
       db.HabitLog.findAll({
-        where: { userId, date: { [Op.gte]: startDate.toISOString().split('T')[0] } },
+        where: { userId, date: { [Op.gte]: formatDate(startDate) } },
         attributes: ['date'],
         raw: true,
       }),
@@ -350,20 +359,17 @@ async function getProductivityTrend(req, res) {
 
     const gymByDate = {};
     gymLogs.forEach((g) => {
-      const ds = formatDate(new Date(g.date));
-      gymByDate[ds] = true;
+      gymByDate[g.date] = true;
     });
 
     const learningByDate = {};
     learningLogs.forEach((l) => {
-      const ds = formatDate(new Date(l.date));
-      learningByDate[ds] = (learningByDate[ds] || 0) + l.timeSpent;
+      learningByDate[l.date] = (learningByDate[l.date] || 0) + l.timeSpent;
     });
 
     const habitsByDate = {};
     habitLogs.forEach((h) => {
-      const ds = formatDate(new Date(h.date));
-      habitsByDate[ds] = (habitsByDate[ds] || 0) + 1;
+      habitsByDate[h.date] = (habitsByDate[h.date] || 0) + 1;
     });
 
     const scores = buckets.map(({ dateStr, start, end }) => {
@@ -439,8 +445,8 @@ async function getHeatmapData(req, res) {
       });
     }
 
-    const yearStart = new Date(Date.UTC(year, 0, 1));
-    const yearEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
+    const yearStart = new Date(year, 0, 1, 0, 0, 0, 0);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
 
     const [completedTasks, gymLogs, learningLogs] = await Promise.all([
       db.Task.findAll({
@@ -449,12 +455,12 @@ async function getHeatmapData(req, res) {
         raw: true,
       }),
       db.GymLog.findAll({
-        where: { userId, date: { [Op.between]: [yearStart.toISOString().split('T')[0], yearEnd.toISOString().split('T')[0]] } },
+        where: { userId, date: { [Op.between]: [formatDate(yearStart), formatDate(yearEnd)] } },
         attributes: ['date'],
         raw: true,
       }),
       db.LearningLog.findAll({
-        where: { userId, date: { [Op.between]: [yearStart.toISOString().split('T')[0], yearEnd.toISOString().split('T')[0]] } },
+        where: { userId, date: { [Op.between]: [formatDate(yearStart), formatDate(yearEnd)] } },
         attributes: ['date'],
         raw: true,
       }),
@@ -468,13 +474,11 @@ async function getHeatmapData(req, res) {
     });
 
     gymLogs.forEach((g) => {
-      const ds = formatDate(new Date(g.date));
-      countByDate[ds] = (countByDate[ds] || 0) + 1;
+      countByDate[g.date] = (countByDate[g.date] || 0) + 1;
     });
 
     learningLogs.forEach((l) => {
-      const ds = formatDate(new Date(l.date));
-      countByDate[ds] = (countByDate[ds] || 0) + 1;
+      countByDate[l.date] = (countByDate[l.date] || 0) + 1;
     });
 
     const heatmap = [];
@@ -482,7 +486,7 @@ async function getHeatmapData(req, res) {
     while (current <= yearEnd) {
       const ds = formatDate(current);
       heatmap.push({ date: ds, count: countByDate[ds] || 0 });
-      current.setUTCDate(current.getUTCDate() + 1);
+      current.setDate(current.getDate() + 1);
     }
 
     const totalActiveDays = heatmap.filter((d) => d.count > 0).length;
@@ -521,11 +525,9 @@ async function getStreakData(req, res) {
     const taskDates = completedTaskDates.map((t) =>
       formatDate(new Date(t.updatedAt)),
     );
-    const gymDateStrs = gymDates.map((g) => formatDate(new Date(g.date)));
-    const learningDateStrs = learningDates.map((l) =>
-      formatDate(new Date(l.date)),
-    );
-    const habitDateStrs = habitDates.map((h) => formatDate(new Date(h.date)));
+    const gymDateStrs = gymDates.map((g) => g.date);
+    const learningDateStrs = learningDates.map((l) => l.date);
+    const habitDateStrs = habitDates.map((h) => h.date);
 
     const allDates = [
       ...taskDates,

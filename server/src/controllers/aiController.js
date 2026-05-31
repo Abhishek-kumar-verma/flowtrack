@@ -129,7 +129,7 @@ async function generateDailySummaryHandler(req, res) {
     console.error('[AI] generateDailySummary error:', error.message);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to generate daily summary.',
+      message: (error?.status || error?.code) ? 'AI service is unavailable. Please try again later.' : 'Failed to generate daily summary.',
     });
   }
 }
@@ -197,7 +197,7 @@ async function getDailyReport(req, res) {
     console.error('[AI] getDailyReport error:', error.message);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to fetch daily report.',
+      message: (error?.status || error?.code) ? 'AI service is unavailable. Please try again later.' : 'Failed to fetch daily report.',
     });
   }
 }
@@ -286,7 +286,7 @@ async function getWeeklyReport(req, res) {
     console.error('[AI] getWeeklyReport error:', error.message);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to generate weekly report.',
+      message: (error?.status || error?.code) ? 'AI service is unavailable. Please try again later.' : 'Failed to generate weekly report.',
     });
   }
 }
@@ -345,7 +345,7 @@ async function chatWithAI(req, res) {
     console.error('[AI] chatWithAI error:', error.message);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to get AI response.',
+      message: (error?.status || error?.code) ? 'AI service is unavailable. Please try again later.' : 'Failed to get AI response.',
     });
   }
 }
@@ -368,7 +368,7 @@ async function generateQuoteForUser(req, res) {
     console.error('[AI] generateQuoteForUser error:', error.message);
     return res.status(500).json({
       success: false,
-      message: error.message || 'Failed to generate motivational quote.',
+      message: (error?.status || error?.code) ? 'AI service is unavailable. Please try again later.' : 'Failed to generate motivational quote.',
     });
   }
 }
