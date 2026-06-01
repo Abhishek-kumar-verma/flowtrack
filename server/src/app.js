@@ -16,6 +16,7 @@ import aiRoutes from './routes/ai.js';
 import quoteRoutes from './routes/quotes.js';
 import moodRoutes from './routes/mood.js';
 import pomodoroRoutes from './routes/pomodoro.js';
+import journalRoutes from './routes/journal.js';
 
 // ── Middleware imports ─────────────────────────────────────────────────────────
 import errorHandler from './middleware/errorHandler.js';
@@ -79,6 +80,7 @@ app.use('/api/ai',aiRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/pomodoro',pomodoroRoutes);
+app.use('/api/journal', journalRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 

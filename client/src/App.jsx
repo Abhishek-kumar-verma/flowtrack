@@ -17,6 +17,7 @@ const Habits     = lazy(() => import('./pages/Habits.jsx'))
 const Analytics  = lazy(() => import('./pages/Analytics.jsx'))
 const AISummary  = lazy(() => import('./pages/AISummary.jsx'))
 const Settings   = lazy(() => import('./pages/Settings.jsx'))
+const Journal    = lazy(() => import('./pages/Journal.jsx'))
 
 // Placeholder pages (to be implemented)
 const Placeholder = lazy(() => import('./pages/Placeholder.jsx'))
@@ -153,6 +154,16 @@ export default function App() {
             <ProtectedRoute>
               <Suspense fallback={<PageSkeleton />}>
                 <Settings />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/journal"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<PageSkeleton />}>
+                <Journal />
               </Suspense>
             </ProtectedRoute>
           }

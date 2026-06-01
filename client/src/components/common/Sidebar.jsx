@@ -19,6 +19,7 @@ import {
   Flame,
   Sun,
   Moon,
+  NotebookPen,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useTheme } from '../../hooks/useTheme.js'
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { to: '/tasks',      icon: CheckSquare,     label: 'Tasks' },
   { to: '/gym',        icon: Dumbbell,        label: 'Gym' },
   { to: '/learning',   icon: BookOpen,        label: 'Learning' },
+  { to: '/journal',    icon: NotebookPen,     label: 'Journal' },
   { to: '/habits',     icon: Flame,           label: 'Habits' },
   { to: '/analytics',  icon: BarChart2,       label: 'Analytics' },
   { to: '/ai-summary', icon: Sparkles,        label: 'AI Summary' },
