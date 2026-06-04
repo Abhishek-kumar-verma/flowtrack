@@ -8,14 +8,21 @@ const router = Router();
 router.use(protect);
 
 /**
- * POST /api/ai/daily-summary
- * Generate (or regenerate) today's AI daily report for the authenticated user.
+ * GET /api/ai/daily-summary?date=YYYY-MM-DD
+ * Retrieve saved daily report (or basic computed stats if none generated yet).
  */
-router.get('/daily-summary', aiController.generateDailySummaryHandler);
+router.get('/daily-summary', aiController.getDailyReport);
+
+/**
+ * POST /api/ai/daily-summary
+ * Generate (or regenerate) the AI daily report for the authenticated user.
+ * Body: { date?: 'YYYY-MM-DD' }
+ */
+router.post('/daily-summary', aiController.generateDailySummaryHandler);
 
 /**
  * GET /api/ai/report?date=YYYY-MM-DD
- * Retrieve saved daily report. Defaults to today if date is omitted.
+ * Alias for GET /daily-summary — retrieve saved daily report.
  */
 router.get('/report', aiController.getDailyReport);
 
