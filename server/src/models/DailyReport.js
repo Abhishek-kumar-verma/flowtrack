@@ -52,19 +52,19 @@ const DailyReport = sequelize.define('DailyReport', {
     defaultValue: [],
   },
   motivation: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   antiprocrastinationTip: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   fitnessConsistency: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   learningGrowth: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   aiSummary: {

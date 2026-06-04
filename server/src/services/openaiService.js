@@ -15,24 +15,25 @@ function buildGeminiParts(messages) {
   return { systemInstruction: systemMsg?.content, history, lastMessage };
 }
 
-async function callJSON(messages, model = 'gemini-1.5-flash') {
+async function callJSON(messages, model = 'gemini-2.5-flash') {
   const { systemInstruction, history, lastMessage } = buildGeminiParts(messages);
   const geminiModel = genAI.getGenerativeModel({
     model,
     ...(systemInstruction && { systemInstruction }),
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.7, maxOutputTokens: 1500 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.7, maxOutputTokens: 4096 },
   });
   const chat = geminiModel.startChat({ history });
   const result = await chat.sendMessage(lastMessage);
   const text = result.response.text();
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (e) {
+    console.error('[Gemini] JSON parse failed (truncated?):', e.message, '| text length:', text.length);
     return {};
   }
 }
 
-async function callText(messages, model = 'gemini-1.5-flash') {
+async function callText(messages, model = 'gemini-2.5-flash') {
   const { systemInstruction, history, lastMessage } = buildGeminiParts(messages);
   const geminiModel = genAI.getGenerativeModel({
     model,
@@ -69,36 +70,47 @@ export async function generateDailySummary(userData) {
     0,
   );
 
-  const systemPrompt = `You are a personal productivity coach and life mentor.
+  const systemPrompt = `You are a precise personal productivity coach.
 Analyze the user's daily data and return a comprehensive JSON performance report.
-Be honest but encouraging. Give actionable, specific insights — not generic advice.
-All scores are 0-100. Return ONLY valid JSON with no extra text.`;
+Be honest — do not inflate scores if the user did little work.
+Give specific, actionable insights tailored to their actual data. Avoid generic advice.
+Scores are 0-100 where 100 = exceptional day. A day with zero tasks, no focus, no gym, no learning should score 0-20.
+Return ONLY valid JSON with no extra text or markdown fences.`;
+
+  const completedTaskTime = completedTasks.reduce((a, t) => a + (t.timeSpent || 0), 0);
 
   const userPrompt = `
 Analyze this daily progress data for ${userName}:
 
 Life Goal: ${lifeGoal || 'Not set'}
-Daily Priorities: ${dailyPriorities.join(', ') || 'Not set'}
+Daily Priorities: ${Array.isArray(dailyPriorities) && dailyPriorities.length ? dailyPriorities.join(', ') : 'Not set'}
 
 TASKS:
-- Completed (${completedTasks.length}): ${completedTasks.map((t) => `"${t.title}" [${t.category}/${t.priority}]`).join(', ') || 'None'}
+- Completed (${completedTasks.length}): ${completedTasks.map((t) => `"${t.title}" [${t.category}/${t.priority}${t.timeSpent ? `/${t.timeSpent}min` : ''}]`).join(', ') || 'None'}
 - Pending (${pendingTasks.length}): ${pendingTasks.map((t) => `"${t.title}" [${t.priority}]`).join(', ') || 'None'}
+- Total time logged on tasks: ${completedTaskTime} min
 
 FITNESS:
-${gymLog ? `- Gym session: ${gymLog.bodyPart}, ${gymLog.duration} min, ${gymLog.caloriesBurned || 0} kcal burned` : '- No gym session today'}
+${gymLog ? `- Gym session: ${gymLog.bodyPart || 'general'}, ${gymLog.duration || 0} min, ${gymLog.caloriesBurned || 0} kcal burned` : '- No gym session today'}
 
 LEARNING:
-${learningLogs.length > 0 ? learningLogs.map((l) => `- ${l.topic} (${l.category}): ${l.timeSpent} min`).join('\n') : '- No learning logged'}
+${learningLogs.length > 0 ? learningLogs.map((l) => `- ${l.topic} (${l.category}, difficulty=${l.difficulty}): ${l.timeSpent} min`).join('\n') : '- No learning logged'}
 Total learning: ${Math.round(totalLearningMinutes / 60 * 10) / 10} hours
 
 HABITS:
-- Completed habit logs: ${habitLogs.length}
+- Completed habit check-ins: ${habitLogs.length}
 
 MOOD: ${moodLog ? `${moodLog.mood}${moodLog.note ? ` — "${moodLog.note}"` : ''}` : 'Not logged'}
 
-FOCUS:
-- Completed pomodoro sessions: ${pomodoroSessions.filter((s) => s.completed).length}
+FOCUS (Pomodoro):
+- Completed sessions: ${pomodoroSessions.filter((s) => s.completed).length}
 - Total focus time: ${Math.round(totalFocusMinutes)} minutes
+
+Scoring guide:
+- productivityScore: weight task completion rate 50%, gym 15%, learning 15%, pomodoro 20%
+- disciplineScore: habits completed, gym consistency, no missing priorities
+- timeManagementScore: did they spread focus, finish tasks before deadline?
+- focusScore: based purely on pomodoro sessions completed and duration
 
 Return a JSON object with EXACTLY these keys:
 {
@@ -106,14 +118,14 @@ Return a JSON object with EXACTLY these keys:
   "disciplineScore": <0-100 number>,
   "timeManagementScore": <0-100 number>,
   "focusScore": <0-100 number>,
-  "positiveHabits": [<array of 2-4 specific positive things user did today>],
-  "weakAreas": [<array of 2-3 specific areas needing improvement>],
-  "suggestions": [<array of 3-5 concrete, actionable suggestions for tomorrow>],
-  "motivation": "<1-2 sentence personalised motivational message>",
-  "antiProcrastinationTip": "<one specific tip to beat procrastination based on today's data>",
-  "fitnessConsistency": "<brief assessment of fitness effort, 1 sentence>",
-  "learningGrowth": "<brief assessment of learning effort, 1 sentence>",
-  "fullSummary": "<3-4 sentence holistic summary of today's performance>"
+  "positiveHabits": [<2-4 specific things the user actually did today>],
+  "weakAreas": [<2-3 specific areas with no or low activity today>],
+  "suggestions": [<3-5 concrete, data-driven suggestions for tomorrow>],
+  "motivation": "<1-2 sentence personalised message referencing their goal>",
+  "antiProcrastinationTip": "<one specific, actionable tip based on their pending tasks or patterns>",
+  "fitnessConsistency": "<1 sentence assessment of today's fitness activity>",
+  "learningGrowth": "<1 sentence assessment of today's learning activity>",
+  "fullSummary": "<3-4 sentence holistic summary referencing actual numbers and progress toward life goal>"
 }`;
 
   try {
@@ -273,14 +285,19 @@ export async function generateChatResponse(messages, userContext = {}) {
 
   const systemMessage = {
     role: 'system',
-    content: `You are an intelligent personal productivity assistant for ${userName || 'the user'}.
-You know their life goal: "${lifeGoal || 'not set'}".
-Their daily priorities: ${dailyPriorities.join(', ') || 'not set'}.
-Today's quick stats: tasks completed=${todayStats.completedTasks || 0}, focus sessions=${todayStats.pomodoroCount || 0}.
+    content: `You are a sharp, empathetic personal productivity coach for ${userName || 'the user'}.
 
-Be conversational, warm, and concise. Give practical advice.
-Do NOT repeat the user's question back to them.
-Keep responses under 150 words unless the user asks for detailed help.`,
+Context you have:
+- Their life goal: "${lifeGoal || 'not set'}"
+- Daily priorities: ${Array.isArray(dailyPriorities) && dailyPriorities.length ? dailyPriorities.join(', ') : 'not set'}
+- Today so far: ${todayStats.completedTasks || 0} tasks completed, ${todayStats.pomodoroCount || 0} focus (Pomodoro) sessions
+
+Rules:
+- Be direct and specific — no filler phrases like "Great question!" or restating what they said.
+- Tie advice to their actual goal and today's stats when relevant.
+- Keep replies under 120 words unless they ask for a detailed breakdown.
+- Use plain conversational language, no bullet overload for short answers.
+- If you don't have enough data to answer precisely, say so briefly and ask a clarifying question.`,
   };
 
   const conversationMessages = [

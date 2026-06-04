@@ -84,7 +84,7 @@ async function fetchDailyData(userId, date) {
 async function generateDailySummaryHandler(req, res) {
   try {
     const userId = req.user.id;
-    const date = toDateOnly(req.query.date || new Date());
+    const date = toDateOnly(req.body.date || req.query.date || new Date());
 
     const data = await fetchDailyData(userId, date);
     const { user, completedTasks, pendingTasks, gymLog, learningLogs, habitLogs, moodLog, pomodoroSessions } =
@@ -123,7 +123,7 @@ async function generateDailySummaryHandler(req, res) {
     return res.status(200).json({
       success: true,
       message: 'Daily summary generated successfully.',
-      data: report,
+      data: { ...report.toJSON(), aiGenerated: true },
     });
   } catch (error) {
     console.error('[AI] generateDailySummary error:', error.message);

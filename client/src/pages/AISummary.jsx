@@ -108,30 +108,36 @@ export default function AISummary() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, chatLoading]);
 
-  const fetchReport = async (date) => {
-    setLoadingReport(true);
-    setReport(null);
-    try {
-      const res = await api.get(`/ai/daily-summary?date=${date}`);
-      setReport(res.data?.data ?? null);
-    } catch (e) {
-      if (e.response?.status !== 404) {
-        console.error('Failed to fetch report');
-      }
-    } finally {
-      setLoadingReport(false);
-    }
-  };
-
-  const generateReport = async () => {
+  const generateReport = async (dateParam) => {
+    const date = dateParam || selectedDate;
     setGenerating(true);
     try {
-      const res = await api.post('/ai/daily-summary', { date: selectedDate });
+      const res = await api.post(`/ai/daily-summary?date=${date}`, {}, { timeout: 60000 });
       setReport(res.data?.data ?? null);
     } catch (e) {
       console.error('Failed to generate report', e);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const fetchReport = async (date) => {
+    setLoadingReport(true);
+    setReport(null);
+    try {
+      const res = await api.get(`/ai/daily-summary?date=${date}`);
+      const data = res.data?.data ?? null;
+      setLoadingReport(false);
+      if (data && !data.aiGenerated) {
+        await generateReport(date);
+      } else {
+        setReport(data);
+      }
+    } catch (e) {
+      if (e.response?.status !== 404) {
+        console.error('Failed to fetch report');
+      }
+      setLoadingReport(false);
     }
   };
 
@@ -155,9 +161,8 @@ export default function AISummary() {
     try {
       const res = await api.post('/ai/chat', {
         message: text,
-        date: selectedDate,
-        history: messages.slice(-6),
-      });
+        conversationHistory: messages.slice(-6).map(({ role, content }) => ({ role, content })),
+      }, { timeout: 30000 });
       const aiMsg = {
         role: 'assistant',
         content: res.data?.data?.reply || res.data?.reply || 'I could not generate a response.',
