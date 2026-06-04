@@ -8,6 +8,7 @@ import {
   Target,
   ArrowRight,
   User,
+  Lock,
   Loader2,
   Sparkles,
   CheckCircle2,
@@ -44,6 +45,7 @@ const slideInRight = {
 
 export default function Login() {
   const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -54,12 +56,16 @@ export default function Login() {
       toast.error('Please enter your username.')
       return
     }
+    if (!password) {
+      toast.error('Please enter your password.')
+      return
+    }
     setIsLoading(true)
     try {
-      await login(username.trim())
+      await login(username.trim(), password)
       navigate('/', { replace: true })
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Login failed. Check your username.'
+      const msg = err?.response?.data?.message || 'Invalid username or password.'
       toast.error(msg)
     } finally {
       setIsLoading(false)
@@ -185,6 +191,26 @@ export default function Login() {
                   className="input-field pl-11"
                   autoFocus
                   autoComplete="username"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-300">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="w-4 h-4 text-slate-500" />
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="input-field pl-11"
+                  autoComplete="current-password"
                   disabled={isLoading}
                 />
               </div>

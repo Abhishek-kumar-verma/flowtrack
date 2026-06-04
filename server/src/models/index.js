@@ -11,6 +11,7 @@ import Quote from './Quote.js';
 import MoodLog from './MoodLog.js';
 import PomodoroSession from './PomodoroSession.js';
 import JournalEntry from './JournalEntry.js';
+import RefreshToken from './RefreshToken.js';
 
 User.hasMany(Task, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Task.belongsTo(User, { foreignKey: 'userId' });
@@ -48,6 +49,9 @@ PomodoroSession.belongsTo(Task, { foreignKey: 'taskId' });
 User.hasMany(JournalEntry, { foreignKey: 'userId', onDelete: 'CASCADE' });
 JournalEntry.belongsTo(User, { foreignKey: 'userId' });
 
+User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
+RefreshToken.belongsTo(User, { foreignKey: 'userId' });
+
 export {
   sequelize,
   User,
@@ -62,6 +66,7 @@ export {
   MoodLog,
   PomodoroSession,
   JournalEntry,
+  RefreshToken,
 };
 
 const db = {
@@ -78,5 +83,6 @@ const db = {
   MoodLog,
   PomodoroSession,
   JournalEntry,
+  RefreshToken,
 };
 export default db;

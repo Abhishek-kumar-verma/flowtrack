@@ -17,11 +17,11 @@ const GymExercise = sequelize.define('GymExercise', {
   },
   sets: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   reps: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   weight: {
     type: DataTypes.FLOAT,

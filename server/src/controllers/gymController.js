@@ -133,8 +133,8 @@ const createGymLog = async (req, res) => {
       },
       exercises.map((ex) => ({
         name   : ex.name,
-        sets   : Number(ex.sets),
-        reps   : Number(ex.reps),
+        sets   : ex.sets != null ? Number(ex.sets) : null,
+        reps   : ex.reps != null ? Number(ex.reps) : null,
         weight : ex.weight != null ? Number(ex.weight) : null,
       })),
     );
@@ -170,8 +170,8 @@ const updateGymLog = async (req, res) => {
     const mappedExercises = Array.isArray(exercises)
       ? exercises.map((ex) => ({
           name   : ex.name,
-          sets   : Number(ex.sets),
-          reps   : Number(ex.reps),
+          sets   : ex.sets != null ? Number(ex.sets) : null,
+          reps   : ex.reps != null ? Number(ex.reps) : null,
           weight : ex.weight != null ? Number(ex.weight) : null,
         }))
       : undefined;

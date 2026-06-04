@@ -7,6 +7,8 @@ const router = Router();
 // Public routes
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+router.post('/refresh', authController.refreshToken);
+router.post('/logout', authController.logout);
 
 // Protected routes (require valid JWT)
 router.get('/me', protect, authController.getMe);

@@ -1,23 +1,30 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Safely call OpenAI and return parsed JSON.
- * Falls back to an empty object if parsing fails so callers always get a shape.
- */
-async function callJSON(messages, model = 'gpt-3.5-turbo') {
-  const response = await openai.chat.completions.create({
-    model,
-    messages,
-    response_format: { type: 'json_object' },
-    temperature: 0.7,
-    max_tokens: 1500,
-  });
+function buildGeminiParts(messages) {
+  const systemMsg = messages.find((m) => m.role === 'system');
+  const turns = messages.filter((m) => m.role !== 'system');
+  const history = turns.slice(0, -1).map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+  const lastMessage = turns[turns.length - 1]?.content ?? '';
+  return { systemInstruction: systemMsg?.content, history, lastMessage };
+}
 
-  const text = response.choices[0]?.message?.content ?? '{}';
+async function callJSON(messages, model = 'gemini-1.5-flash') {
+  const { systemInstruction, history, lastMessage } = buildGeminiParts(messages);
+  const geminiModel = genAI.getGenerativeModel({
+    model,
+    ...(systemInstruction && { systemInstruction }),
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.7, maxOutputTokens: 1500 },
+  });
+  const chat = geminiModel.startChat({ history });
+  const result = await chat.sendMessage(lastMessage);
+  const text = result.response.text();
   try {
     return JSON.parse(text);
   } catch {
@@ -25,37 +32,20 @@ async function callJSON(messages, model = 'gpt-3.5-turbo') {
   }
 }
 
-/**
- * Regular (non-JSON) completion — used for conversational replies.
- */
-async function callText(messages, model = 'gpt-3.5-turbo') {
-  const response = await openai.chat.completions.create({
+async function callText(messages, model = 'gemini-1.5-flash') {
+  const { systemInstruction, history, lastMessage } = buildGeminiParts(messages);
+  const geminiModel = genAI.getGenerativeModel({
     model,
-    messages,
-    temperature: 0.8,
-    max_tokens: 800,
+    ...(systemInstruction && { systemInstruction }),
+    generationConfig: { temperature: 0.8, maxOutputTokens: 800 },
   });
-  return response.choices[0]?.message?.content?.trim() ?? '';
+  const chat = geminiModel.startChat({ history });
+  const result = await chat.sendMessage(lastMessage);
+  return result.response.text().trim();
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * generateDailySummary(userData)
- *
- * userData = {
- *   userName, lifeGoal, dailyPriorities,
- *   completedTasks[], pendingTasks[],
- *   gymLog, learningLogs[], habitLogs[],
- *   moodLog, pomodoroSessions[]
- * }
- *
- * Returns {
- *   productivityScore, disciplineScore, timeManagementScore, focusScore,
- *   positiveHabits[], weakAreas[], suggestions[], motivation,
- *   antiProcrastinationTip, fitnessConsistency, learningGrowth, fullSummary
- * }
- */
 export async function generateDailySummary(userData) {
   const {
     userName,
@@ -132,7 +122,6 @@ Return a JSON object with EXACTLY these keys:
       { role: 'user', content: userPrompt },
     ]);
 
-    // Ensure numeric scores are valid
     const clamp = (v, fallback = 50) =>
       typeof v === 'number' && v >= 0 && v <= 100 ? Math.round(v) : fallback;
 
@@ -141,9 +130,7 @@ Return a JSON object with EXACTLY these keys:
       disciplineScore: clamp(result.disciplineScore),
       timeManagementScore: clamp(result.timeManagementScore),
       focusScore: clamp(result.focusScore),
-      positiveHabits: Array.isArray(result.positiveHabits)
-        ? result.positiveHabits
-        : [],
+      positiveHabits: Array.isArray(result.positiveHabits) ? result.positiveHabits : [],
       weakAreas: Array.isArray(result.weakAreas) ? result.weakAreas : [],
       suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
       motivation: result.motivation || '',
@@ -153,23 +140,11 @@ Return a JSON object with EXACTLY these keys:
       fullSummary: result.fullSummary || '',
     };
   } catch (error) {
-    console.error('[OpenAI] generateDailySummary error:', error.message);
+    console.error('[Gemini] generateDailySummary error:', error.message);
     throw new Error(`AI summary generation failed: ${error.message}`);
   }
 }
 
-/**
- * generateWeeklyReport(weekData)
- *
- * weekData = {
- *   userName, lifeGoal,
- *   dailyReports[],   // array of DailyReport records for the week
- *   taskStats,        // { total, completed, byCategory }
- *   gymSessions,      // count
- *   learningHours,    // number
- *   habitCompletionRate // 0-1
- * }
- */
 export async function generateWeeklyReport(weekData) {
   const {
     userName,
@@ -225,15 +200,11 @@ Return JSON with:
       { role: 'user', content: userPrompt },
     ]);
   } catch (error) {
-    console.error('[OpenAI] generateWeeklyReport error:', error.message);
+    console.error('[Gemini] generateWeeklyReport error:', error.message);
     throw new Error(`Weekly report generation failed: ${error.message}`);
   }
 }
 
-/**
- * generateMotivationalQuote(userGoal)
- * Returns { quote, author, reflection }
- */
 export async function generateMotivationalQuote(userGoal) {
   const systemPrompt = `You are a wisdom curator. Generate an inspiring motivational quote
 tailored to the user's personal goal. Return ONLY valid JSON.`;
@@ -253,28 +224,14 @@ Return JSON with:
       { role: 'user', content: userPrompt },
     ]);
   } catch (error) {
-    console.error('[OpenAI] generateMotivationalQuote error:', error.message);
+    console.error('[Gemini] generateMotivationalQuote error:', error.message);
     throw new Error(`Quote generation failed: ${error.message}`);
   }
 }
 
-/**
- * generateHabitInsights(habitData)
- *
- * habitData = {
- *   userName,
- *   habits[],           // user's habits with frequency and targetCount
- *   completionHistory[] // last 30 days of HabitLog entries
- * }
- */
 export async function generateHabitInsights(habitData) {
-  const {
-    userName,
-    habits = [],
-    completionHistory = [],
-  } = habitData;
+  const { userName, habits = [], completionHistory = [] } = habitData;
 
-  // Compute per-habit completion rates
   const habitStats = habits.map((h) => {
     const logs = completionHistory.filter((l) => l.habitId === h.id);
     return { name: h.name, frequency: h.frequency, logsLast30Days: logs.length };
@@ -287,12 +244,7 @@ data-driven insights and actionable advice. Return ONLY valid JSON.`;
 Habit analysis for ${userName} (last 30 days):
 
 ${habitStats.length > 0
-    ? habitStats
-        .map(
-          (h) =>
-            `- "${h.name}" (${h.frequency}): logged ${h.logsLast30Days} times`,
-        )
-        .join('\n')
+    ? habitStats.map((h) => `- "${h.name}" (${h.frequency}): logged ${h.logsLast30Days} times`).join('\n')
     : 'No habits tracked yet.'}
 
 Return JSON with:
@@ -311,22 +263,13 @@ Return JSON with:
       { role: 'user', content: userPrompt },
     ]);
   } catch (error) {
-    console.error('[OpenAI] generateHabitInsights error:', error.message);
+    console.error('[Gemini] generateHabitInsights error:', error.message);
     throw new Error(`Habit insights generation failed: ${error.message}`);
   }
 }
 
-/**
- * generateChatResponse(messages, userContext)
- *
- * messages         = [ { role: 'user'|'assistant', content: string } ]
- * userContext      = { userName, lifeGoal, dailyPriorities, todayStats }
- *
- * Returns { reply: string }
- */
 export async function generateChatResponse(messages, userContext = {}) {
-  const { userName, lifeGoal, dailyPriorities = [], todayStats = {} } =
-    userContext;
+  const { userName, lifeGoal, dailyPriorities = [], todayStats = {} } = userContext;
 
   const systemMessage = {
     role: 'system',
@@ -349,7 +292,7 @@ Keep responses under 150 words unless the user asks for detailed help.`,
     const reply = await callText(conversationMessages);
     return { reply };
   } catch (error) {
-    console.error('[OpenAI] generateChatResponse error:', error.message);
+    console.error('[Gemini] generateChatResponse error:', error.message);
     throw new Error(`Chat response failed: ${error.message}`);
   }
 }

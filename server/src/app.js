@@ -2,6 +2,8 @@ process.env.TZ = 'Asia/Kolkata';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { sequelize } from './models/index.js';
 
 // ── Route imports ──────────────────────────────────────────────────────────────
@@ -25,6 +27,10 @@ import errorHandler from './middleware/errorHandler.js';
 import { startCronJobs } from './jobs/cronJobs.js';
 
 // ─── App setup ────────────────────────────────────────────────────────────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const clientDist = path.join(__dirname, '../../client/dist');
 
 const app = express();
 
@@ -82,14 +88,20 @@ app.use('/api/mood', moodRoutes);
 app.use('/api/pomodoro',pomodoroRoutes);
 app.use('/api/journal', journalRoutes);
 
-// ─── 404 Handler ──────────────────────────────────────────────────────────────
+// ─── API 404 (unmatched /api/* routes) ───────────────────────────────────────
 
-app.use((_req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found.',
-  });
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, message: 'API route not found.' });
 });
+
+// ─── SPA Static Serving (production) ─────────────────────────────────────────
+// Serves the built React app and falls back to index.html for all non-API
+// routes so that React Router handles client-side navigation on page refresh.
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 // Must be registered LAST — after all routes

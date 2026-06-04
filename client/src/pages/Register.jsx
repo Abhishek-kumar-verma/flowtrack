@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Zap,
   User,
+  Lock,
   Target,
   Plus,
   X,
@@ -63,6 +64,7 @@ export default function Register() {
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState(1)
   const [name, setName] = useState('')
+  const [password, setPassword] = useState('')
   const [lifeGoal, setLifeGoal] = useState('')
   const [priorities, setPriorities] = useState([''])
   const [newPriority, setNewPriority] = useState('')
@@ -109,6 +111,7 @@ export default function Register() {
     try {
       const data = await register({
         name: name.trim(),
+        password,
         lifeGoal: lifeGoal.trim(),
         dailyPriorities: priorities.filter(Boolean),
       })
@@ -130,7 +133,7 @@ export default function Register() {
     })
   }
 
-  const isStep1Valid = name.trim().length >= 2
+  const isStep1Valid = name.trim().length >= 2 && password.length >= 6
   const isStep2Valid = lifeGoal.trim().length >= 10
   const isStep3Valid = priorities.filter(Boolean).length >= 1
 
@@ -198,6 +201,26 @@ export default function Register() {
                   </div>
                   {name.trim().length > 0 && name.trim().length < 2 && (
                     <p className="text-rose-400 text-xs">Name must be at least 2 characters.</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-300">Password</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="input-field pl-11"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  {password.length > 0 && password.length < 6 && (
+                    <p className="text-rose-400 text-xs">Password must be at least 6 characters.</p>
                   )}
                 </div>
               </motion.div>
