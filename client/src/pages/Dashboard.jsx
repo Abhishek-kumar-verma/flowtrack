@@ -161,13 +161,15 @@ export default function Dashboard() {
   const fetchAll = useCallback(async () => {
     setLoading({ quote: true, tasks: true, stats: true, chart: true, ai: true })
 
+    const today = new Date().toISOString().split('T')[0]
+
     const [quoteRes, tasksRes, gymRes, learningRes, streakRes, chartRes, aiRes] =
       await Promise.allSettled([
         api.get('/quotes/today'),
         api.get('/tasks/today'),
         api.get('/gym/today'),
-        api.get('/learning/today'),
-        api.get('/analytics/streak'),
+        api.get(`/learning?startDate=${today}&endDate=${today}&limit=50`),
+        api.get('/analytics/streaks'),
         api.get('/analytics/productivity?period=week'),
         api.get('/ai/report'),
       ])
@@ -191,18 +193,25 @@ export default function Dashboard() {
 
     // Stats (gym, learning, streak) — all resolved above
     if (gymRes.status === 'fulfilled') {
-      setGym(gymRes.value.data)
+      // gym.data is the actual log (or null if no session today)
+      setGym(gymRes.value.data?.data ?? null)
     } else {
       setGym(null)
     }
     if (learningRes.status === 'fulfilled') {
-      setLearning(learningRes.value.data)
+      const logs = learningRes.value.data?.data ?? []
+      if (logs.length > 0) {
+        const totalMinutes = logs.reduce((sum, l) => sum + (l.timeSpent || 0), 0)
+        setLearning({ topic: logs[0].topic, duration: totalMinutes })
+      } else {
+        setLearning(null)
+      }
     } else {
       setLearning(null)
     }
     if (streakRes.status === 'fulfilled') {
       const d = streakRes.value.data
-      setStreak(d?.streak ?? d?.current ?? 0)
+      setStreak(d?.data?.currentStreak ?? 0)
     } else {
       setStreak(0)
     }
@@ -211,9 +220,14 @@ export default function Dashboard() {
     // Chart
     if (chartRes.status === 'fulfilled') {
       const d = chartRes.value.data
-      setChartData(Array.isArray(d) ? d : d.data || [])
+      const scores = d?.data?.scores ?? []
+      const mapped = scores.map((s) => ({
+        day: new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+        tasks: s.meta?.tasksCompleted ?? 0,
+        learning: +((s.meta?.learningMinutes ?? 0) / 60).toFixed(1),
+      }))
+      setChartData(mapped.length > 0 ? mapped : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, tasks: 0, learning: 0 })))
     } else {
-      // Opt-4: show empty chart on failure instead of random data
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       setChartData(days.map((day) => ({ day, tasks: 0, learning: 0 })))
     }
@@ -221,7 +235,8 @@ export default function Dashboard() {
 
     // AI report
     if (aiRes.status === 'fulfilled') {
-      setAiReport(aiRes.value.data)
+      const d = aiRes.value.data?.data
+      setAiReport(d?.aiGenerated ? d : null)
     } else {
       setAiReport(null)
     }
@@ -283,9 +298,7 @@ export default function Dashboard() {
   const totalCount = tasks.length
 
   const gymDisplay = gym
-    ? gym.completed
-      ? '✓ Done'
-      : gym.name || 'Logged'
+    ? gym.bodyPart || '✓ Done'
     : '✗ None'
 
   const learningMins = learning?.duration || 0
@@ -464,7 +477,7 @@ export default function Dashboard() {
                 </div>
               ) : gym ? (
                 <div className="space-y-1.5">
-                  <p className="text-slate-900 dark:text-white font-medium text-sm">{gym.name || gym.type || 'Workout logged'}</p>
+                  <p className="text-slate-900 dark:text-white font-medium text-sm">{gym.bodyPart || 'Workout logged'}</p>
                   {gym.duration && (
                     <p className="text-slate-500 text-xs flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {gym.duration} minutes
@@ -563,8 +576,8 @@ export default function Dashboard() {
               </div>
             ) : aiReport ? (
               <div className="space-y-4">
-                {aiReport.summary && (
-                  <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{aiReport.summary}</p>
+                {aiReport.aiSummary && (
+                  <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{aiReport.aiSummary}</p>
                 )}
                 {aiReport.suggestions?.length > 0 && (
                   <div className="space-y-2">

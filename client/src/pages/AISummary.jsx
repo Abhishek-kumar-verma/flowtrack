@@ -113,7 +113,7 @@ export default function AISummary() {
     setReport(null);
     try {
       const res = await api.get(`/ai/daily-summary?date=${date}`);
-      setReport(res.data);
+      setReport(res.data?.data ?? null);
     } catch (e) {
       if (e.response?.status !== 404) {
         console.error('Failed to fetch report');
@@ -127,7 +127,7 @@ export default function AISummary() {
     setGenerating(true);
     try {
       const res = await api.post('/ai/daily-summary', { date: selectedDate });
-      setReport(res.data);
+      setReport(res.data?.data ?? null);
     } catch (e) {
       console.error('Failed to generate report', e);
     } finally {
@@ -160,7 +160,7 @@ export default function AISummary() {
       });
       const aiMsg = {
         role: 'assistant',
-        content: res.data?.reply || res.data?.message || res.data?.content || 'I could not generate a response.',
+        content: res.data?.data?.reply || res.data?.reply || 'I could not generate a response.',
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -185,11 +185,11 @@ export default function AISummary() {
 
   const isToday = selectedDate === formatDate(new Date());
 
-  const scores = report ? [
-    { label: 'Productivity', score: report.productivity_score ?? report.scores?.productivity ?? 0, color: '#6366f1' },
-    { label: 'Discipline', score: report.discipline_score ?? report.scores?.discipline ?? 0, color: '#8b5cf6' },
-    { label: 'Time Mgmt', score: report.time_management_score ?? report.scores?.time_management ?? 0, color: '#10b981' },
-    { label: 'Focus Level', score: report.focus_score ?? report.scores?.focus ?? 0, color: '#f59e0b' },
+  const scores = report?.aiGenerated ? [
+    { label: 'Productivity', score: report.productivityScore ?? 0, color: '#6366f1' },
+    { label: 'Discipline', score: report.disciplineScore ?? 0, color: '#8b5cf6' },
+    { label: 'Time Mgmt', score: report.timeManagementScore ?? 0, color: '#10b981' },
+    { label: 'Focus Level', score: report.focusScore ?? 0, color: '#f59e0b' },
   ] : [];
 
   return (
@@ -350,28 +350,47 @@ export default function AISummary() {
             animate={{ opacity: 1 }}
             className="space-y-6"
           >
-            {/* Score rings */}
-            <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                <Sparkles size={18} className="text-purple-400" />
-                Performance Scores
-              </h2>
-              <div className="flex flex-wrap justify-center sm:justify-around gap-8">
-                {scores.map(({ label, score, color }, i) => (
-                  <motion.div
-                    key={label}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <ScoreRing score={score} label={label} color={color} size={120} />
-                  </motion.div>
-                ))}
+            {/* Score rings — only when AI-generated */}
+            {report.aiGenerated && scores.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                  <Sparkles size={18} className="text-purple-400" />
+                  Performance Scores
+                </h2>
+                <div className="flex flex-wrap justify-center sm:justify-around gap-8">
+                  {scores.map(({ label, score, color }, i) => (
+                    <motion.div
+                      key={label}
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                    >
+                      <ScoreRing score={score} label={label} color={color} size={120} />
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Not AI generated yet — prompt to generate */}
+            {!report.aiGenerated && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-gray-900 border border-purple-500/20 rounded-2xl p-6 text-center"
+              >
+                <Brain size={32} className="text-purple-400 mx-auto mb-3" />
+                <p className="text-slate-700 dark:text-white font-semibold mb-1">Basic stats loaded</p>
+                <p className="text-slate-500 text-sm mb-4">{report.message || 'Click "Generate Report" to get full AI analysis.'}</p>
+                <div className="flex justify-center gap-6 text-sm text-slate-600 dark:text-gray-300">
+                  <span>✅ {report.completedTasks} completed</span>
+                  <span>⏳ {report.pendingTasks} pending</span>
+                </div>
+              </motion.div>
+            )}
 
             {/* AI Summary narrative */}
-            {(report.summary || report.narrative) && (
+            {report.aiSummary && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -382,92 +401,98 @@ export default function AISummary() {
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">AI Summary</h2>
                 </div>
                 <p className="text-slate-700 dark:text-gray-300 leading-relaxed text-sm whitespace-pre-line">
-                  {report.summary || report.narrative}
+                  {report.aiSummary}
                 </p>
               </motion.div>
             )}
 
             {/* Positive habits + Weak areas + Suggestions */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <ListCard
-                title="Positive Habits"
-                items={report.positive_habits || report.strengths || []}
-                icon={CheckCircle}
-                color="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                emptyMsg="Keep tracking to reveal patterns"
-              />
-              <ListCard
-                title="Weak Areas"
-                items={report.weak_areas || report.weaknesses || report.areas_for_improvement || []}
-                icon={AlertTriangle}
-                color="bg-orange-500/10 border border-orange-500/20 text-orange-400"
-                emptyMsg="No weak areas identified"
-              />
-              <ListCard
-                title="Suggestions"
-                items={report.suggestions || report.recommendations || []}
-                icon={Lightbulb}
-                color="bg-blue-500/10 border border-blue-500/20 text-blue-400"
-                emptyMsg="No suggestions at this time"
-              />
-            </div>
+            {report.aiGenerated && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <ListCard
+                  title="Positive Habits"
+                  items={report.positiveHabits || []}
+                  icon={CheckCircle}
+                  color="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                  emptyMsg="Keep tracking to reveal patterns"
+                />
+                <ListCard
+                  title="Weak Areas"
+                  items={report.weakAreas || []}
+                  icon={AlertTriangle}
+                  color="bg-orange-500/10 border border-orange-500/20 text-orange-400"
+                  emptyMsg="No weak areas identified"
+                />
+                <ListCard
+                  title="Suggestions"
+                  items={report.suggestions || []}
+                  icon={Lightbulb}
+                  color="bg-blue-500/10 border border-blue-500/20 text-blue-400"
+                  emptyMsg="No suggestions at this time"
+                />
+              </div>
+            )}
 
             {/* Motivation + Anti-procrastination */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(report.motivation || report.motivational_message) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-br from-purple-50 dark:from-purple-600/20 to-pink-50 dark:to-pink-600/20 border border-purple-200 dark:border-purple-500/20 rounded-2xl p-5"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Heart size={16} className="text-pink-400" />
-                    <h3 className="text-slate-900 dark:text-white font-semibold">Motivation</h3>
-                  </div>
-                  <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed italic">
-                    "{report.motivation || report.motivational_message}"
-                  </p>
-                </motion.div>
-              )}
+            {report.aiGenerated && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {report.motivation && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-purple-50 dark:from-purple-600/20 to-pink-50 dark:to-pink-600/20 border border-purple-200 dark:border-purple-500/20 rounded-2xl p-5"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Heart size={16} className="text-pink-400" />
+                      <h3 className="text-slate-900 dark:text-white font-semibold">Motivation</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed italic">
+                      "{report.motivation}"
+                    </p>
+                  </motion.div>
+                )}
 
-              {(report.anti_procrastination_tip || report.procrastination_tip) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-br from-yellow-50 dark:from-yellow-600/10 to-orange-50 dark:to-orange-600/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl p-5"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Zap size={16} className="text-yellow-500 dark:text-yellow-400" />
-                    <h3 className="text-slate-900 dark:text-white font-semibold">Anti-Procrastination Tip</h3>
-                  </div>
-                  <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">
-                    {report.anti_procrastination_tip || report.procrastination_tip}
-                  </p>
-                </motion.div>
-              )}
-            </div>
+                {report.antiprocrastinationTip && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-yellow-50 dark:from-yellow-600/10 to-orange-50 dark:to-orange-600/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl p-5"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap size={16} className="text-yellow-500 dark:text-yellow-400" />
+                      <h3 className="text-slate-900 dark:text-white font-semibold">Anti-Procrastination Tip</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">
+                      {report.antiprocrastinationTip}
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+            )}
 
             {/* Fitness & Learning side by side */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {report.fitness_analysis && (
-                <div className="bg-white dark:bg-gray-900 border border-orange-500/20 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Dumbbell size={16} className="text-orange-400" />
-                    <h3 className="text-slate-900 dark:text-white font-semibold">Fitness Analysis</h3>
+            {report.aiGenerated && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {report.fitnessConsistency && (
+                  <div className="bg-white dark:bg-gray-900 border border-orange-500/20 rounded-2xl p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Dumbbell size={16} className="text-orange-400" />
+                      <h3 className="text-slate-900 dark:text-white font-semibold">Fitness Analysis</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">{report.fitnessConsistency}</p>
                   </div>
-                  <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">{report.fitness_analysis}</p>
-                </div>
-              )}
-              {report.learning_analysis && (
-                <div className="bg-white dark:bg-gray-900 border border-blue-500/20 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <BookOpen size={16} className="text-blue-400" />
-                    <h3 className="text-slate-900 dark:text-white font-semibold">Learning Analysis</h3>
+                )}
+                {report.learningGrowth && (
+                  <div className="bg-white dark:bg-gray-900 border border-blue-500/20 rounded-2xl p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen size={16} className="text-blue-400" />
+                      <h3 className="text-slate-900 dark:text-white font-semibold">Learning Analysis</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">{report.learningGrowth}</p>
                   </div>
-                  <p className="text-slate-600 dark:text-gray-300 text-sm leading-relaxed">{report.learning_analysis}</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 

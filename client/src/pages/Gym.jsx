@@ -56,7 +56,7 @@ export default function Gym() {
     setStatsLoading(true);
     try {
       const { data } = await api.get('/gym/stats');
-      setStats(data);
+      setStats(data?.data ?? data);
     } catch {
       // non-critical
     } finally {
@@ -112,8 +112,8 @@ export default function Gym() {
 
   const totalDuration = statsLoading
     ? '…'
-    : stats?.totalDuration != null
-    ? formatDuration(stats.totalDuration)
+    : stats?.totalDurationThisMonth != null
+    ? formatDuration(stats.totalDurationThisMonth)
     : '0m';
 
   return (
@@ -141,7 +141,7 @@ export default function Gym() {
           <StatCard
             icon={<Dumbbell size={18} />}
             label="This Month"
-            value={statsLoading ? '…' : (stats?.monthWorkouts ?? 0)}
+            value={statsLoading ? '…' : (stats?.totalWorkoutsThisMonth ?? 0)}
             suffix="sessions"
             color="emerald"
           />
@@ -161,7 +161,7 @@ export default function Gym() {
           <StatCard
             icon={<TrendingUp size={18} />}
             label="Most Trained"
-            value={statsLoading ? '…' : (stats?.mostTrained ?? '—')}
+            value={statsLoading ? '…' : (stats?.mostTrainedBodyParts?.[0]?.bodyPart ?? '—')}
             color="accent"
           />
         </div>

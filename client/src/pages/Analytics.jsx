@@ -34,12 +34,12 @@ const PIE_COLORS = [
 ];
 
 const statCards = [
-  { key: 'total_tasks_completed', label: 'Tasks Completed', icon: CheckCircle2, color: 'emerald', suffix: '' },
-  { key: 'completion_rate', label: 'Completion Rate', icon: TrendingUp, color: 'indigo', suffix: '%' },
-  { key: 'current_streak', label: 'Current Streak', icon: Flame, color: 'orange', suffix: ' days' },
-  { key: 'total_focus_hours', label: 'Focus Hours', icon: Clock, color: 'purple', suffix: 'h' },
-  { key: 'total_learning_hours', label: 'Learning Hours', icon: BookOpen, color: 'blue', suffix: 'h' },
-  { key: 'total_gym_sessions', label: 'Gym Sessions', icon: Dumbbell, color: 'pink', suffix: '' },
+  { key: 'completedTasks', label: 'Tasks Completed', icon: CheckCircle2, color: 'emerald', suffix: '' },
+  { key: 'completionRate', label: 'Completion Rate', icon: TrendingUp, color: 'indigo', suffix: '%' },
+  { key: 'currentStreak', label: 'Current Streak', icon: Flame, color: 'orange', suffix: ' days' },
+  { key: 'totalFocusHours', label: 'Focus Hours', icon: Clock, color: 'purple', suffix: 'h' },
+  { key: 'totalLearningHours', label: 'Learning Hours', icon: BookOpen, color: 'blue', suffix: 'h' },
+  { key: 'totalGymSessions', label: 'Gym Sessions', icon: Dumbbell, color: 'pink', suffix: '' },
 ];
 
 const colorMap = {
@@ -68,8 +68,8 @@ function StatCard({ stat, value, loading }) {
   const displayValue = () => {
     if (loading) return '—';
     if (value === undefined || value === null) return '—';
-    if (stat.key === 'completion_rate') return `${Math.round(value)}%`;
-    if (stat.key === 'total_focus_hours' || stat.key === 'total_learning_hours')
+    if (stat.key === 'completionRate') return `${Math.round(value)}%`;
+    if (stat.key === 'totalFocusHours' || stat.key === 'totalLearningHours')
       return `${(+value).toFixed(1)}h`;
     return value;
   };
@@ -143,7 +143,7 @@ export default function Analytics() {
   const fetchOverview = async () => {
     try {
       const res = await api.get('/analytics');
-      setOverview(res.data);
+      setOverview(res.data?.data ?? res.data);
     } catch (e) {
       setError(prev => ({ ...prev, overview: 'Failed to load overview' }));
     } finally {
@@ -166,7 +166,7 @@ export default function Analytics() {
   const fetchTaskAnalytics = async () => {
     try {
       const res = await api.get('/analytics/tasks');
-      setTaskAnalytics(res.data);
+      setTaskAnalytics(res.data?.data ?? res.data);
     } catch (e) {
       setError(prev => ({ ...prev, tasks: 'Failed to load task analytics' }));
     } finally {
@@ -185,8 +185,8 @@ export default function Analytics() {
     }
   };
 
-  const categoryData = taskAnalytics?.by_category || taskAnalytics?.categories || [];
-  const priorityData = taskAnalytics?.by_priority || taskAnalytics?.priorities || [];
+  const categoryData = taskAnalytics?.byCategory || [];
+  const priorityData = taskAnalytics?.byPriority || [];
   const learningData = taskAnalytics?.learning_by_category || taskAnalytics?.learning || [];
 
   return (
@@ -335,7 +335,7 @@ export default function Analytics() {
                   <XAxis dataKey="priority" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomBarTooltip />} cursor={{ fill: '#00000008' }} />
-                  <Bar dataKey="total" name="Total" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" name="Total" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="completed" name="Completed" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
